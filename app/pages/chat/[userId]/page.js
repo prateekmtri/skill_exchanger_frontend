@@ -7,8 +7,6 @@ import { jwtDecode } from 'jwt-decode';
 import { Send, ArrowLeft, Check, CheckCheck, Smile, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmojiPicker from 'emoji-picker-react';
-// REMOVED: Ab hum global context ka use nahi karenge
-// import { useSocket } from '@/context/SocketContext';
 
 const MessageTick = ({ status }) => {
     if (status === 'seen') return <CheckCheck size={16} className="text-blue-400" />;
@@ -25,7 +23,6 @@ const ChatPage = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // NAYA: Ab socket aur isConnected state local honge
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -39,22 +36,17 @@ const ChatPage = () => {
   };
   useEffect(scrollToBottom, [messages]);
 
-  // --- YEH useEffect AB CHAT PAGE KI POORI LIFECYCLE HANDLE KAREGA ---
   useEffect(() => {
-    let newSocket; // Socket ko scope mein rakhein taaki cleanup ho sake
-
+    let newSocket; 
     const initializeChat = async () => {
         const token = localStorage.getItem('skill-token');
         if (!token) {
             router.push('/pages/log_in');
             return;
         }
-
         try {
             const decoded = jwtDecode(token);
             setLoggedInUser(decoded);
-
-            // 1. Data Fetching
             const [userRes, msgRes] = await Promise.all([
                 fetch(`https://skill-exchanger-backend-3.onrender.com/api/users/${receiverId}`),
                 fetch(`https://skill-exchanger-backend-3.onrender.com/api/chat/${receiverId}`, {
@@ -69,9 +61,8 @@ const ChatPage = () => {
             if (userData.status === 'success') setChatPartner(userData.data.user);
             if (msgData.status === 'success') setMessages(msgData.data.messages);
             
-            setIsLoading(false); // Data fetch hone ke baad loading band karein
+            setIsLoading(false);
 
-            // 2. Socket Connection
             newSocket = io('https://skill-exchanger-backend-3.onrender.com');
             setSocket(newSocket);
 
@@ -82,7 +73,6 @@ const ChatPage = () => {
             });
             newSocket.on('disconnect', () => setIsConnected(false));
 
-            // 3. Listeners Setup
             newSocket.on('new_message', (message) => {
                 if (message.senderId === receiverId || message.senderId === decoded.id) {
                     setMessages((prev) => [...prev, message]);
@@ -91,26 +81,20 @@ const ChatPage = () => {
                     }
                 }
             });
-
             newSocket.on('get_online_users', (onlineUsers) => {
                 setIsPartnerOnline(onlineUsers.includes(receiverId));
             });
-
             newSocket.on('messages_seen', ({ conversationPartner }) => {
                 if (conversationPartner === receiverId) {
                     setMessages(prev => prev.map(msg => ({ ...msg, status: 'seen' })));
                 }
             });
-
         } catch (error) {
             console.error("Initialization Error:", error);
             setIsLoading(false);
         }
     };
-
     initializeChat();
-
-    // Cleanup function: Jab component unmount ho
     return () => {
         if (newSocket) {
             newSocket.disconnect();
@@ -134,7 +118,6 @@ const ChatPage = () => {
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen bg-gray-100 text-gray-500"><Loader className="animate-spin mr-2" /> Initializing Chat...</div>;
   }
-
   if (!chatPartner) {
     return <div className="flex justify-center items-center h-screen bg-gray-100 text-red-500">Could not load user details. Please go back.</div>;
   }
@@ -168,10 +151,15 @@ const ChatPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <div className={`max-w-md px-4 py-3 rounded-2xl shadow-sm ${msg.senderId === loggedInUser.id ? 'bg-blue-600 text-white' : 'bg-white'}`}>
-                <p className="text-sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>
+              <div className={`max-w-md px-4 py-3 rounded-2xl shadow-sm bg-white`}>
+                <p 
+                    className={`text-sm ${ msg.senderId === loggedInUser.id ? 'text-blue-600' : 'text-gray-800' }`} 
+                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                >
+                    {msg.content}
+                </p>
                 <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                  <span className={`text-xs opacity-75 ${msg.senderId === loggedInUser.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                  <span className="text-xs text-gray-400">
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                   {msg.senderId === loggedInUser.id && <MessageTick status={msg.status} />}
@@ -201,7 +189,8 @@ const ChatPage = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder={isConnected ? "Type a message..." : "Connecting..."}
             disabled={!isConnected}
-            className="flex-1 w-full px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed" 
+            // --- YAHAN FIX HAI: 'text-gray-900' add kiya gaya hai ---
+            className="flex-1 w-full px-4 py-3 bg-gray-100 text-gray-900 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed" 
           />
           <motion.button 
             type="submit" 

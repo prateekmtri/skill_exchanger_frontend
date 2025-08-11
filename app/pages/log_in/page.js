@@ -1,4 +1,3 @@
-// app/pages/log_in/page.js (FINAL FIX WITH TIMEOUT)
 'use client';
 
 import { useState } from 'react';
@@ -53,12 +52,10 @@ export default function LoginPage() {
 
         alert('Login successful! Redirecting...');
 
-        // --- YEH HAI FINAL FIX: Redirect ko halka sa delay dein ---
-        // Isse browser ko localStorage update karne ka poora time mil jayega.
         setTimeout(() => {
             console.log("100ms ke baad, ab redirect kar rahe hain...");
             router.push('/pages/show_user');
-        }, 100); // Sirf 100 millisecond (0.1 second) ka delay
+        }, 100);
 
       } else {
         setError(data.message || 'Login failed. Please check your credentials.');
@@ -66,7 +63,6 @@ export default function LoginPage() {
     } catch (err) {
       setError('Network error. Please try again later.');
     } finally {
-      // setLoading ko timeout ke andar nahi rakhenge taaki button turant normal ho jaye
       setLoading(false);
     }
   };
@@ -88,12 +84,34 @@ export default function LoginPage() {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-gray-700">Email *</label>
-            <input id="email" name="email" type="email" autoComplete="email" required className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input 
+                id="email" 
+                name="email" 
+                type="email" 
+                autoComplete="email" 
+                required 
+                // --- YAHAN FIX HAI: 'text-gray-900' add kiya gaya hai ---
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                placeholder="you@example.com" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+            />
           </div>
           <div className="space-y-2">
              <label htmlFor="password" className="text-sm font-medium text-gray-700">Password *</label>
             <div className="relative">
-                <input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input 
+                    id="password" 
+                    name="password" 
+                    type={showPassword ? 'text' : 'password'} 
+                    autoComplete="current-password" 
+                    required 
+                    // --- YAHAN BHI FIX HAI: 'text-gray-900' add kiya gaya hai ---
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                    placeholder="••••••••" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                   {showPassword ? <EyeOffIcon className="h-5 w-5"/> : <EyeIcon className="h-5 w-5"/>}
                 </button>
