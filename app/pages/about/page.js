@@ -168,9 +168,9 @@ const SkillExchangerAboutPage = () => {
   const handleGetStarted = () => {
     const isLoggedIn = false; 
     if (isLoggedIn) {
-        window.location.href = '/pages/home';
+        window.location.href = '/pages/Home';
     } else {
-        window.location.href = '/pages/signup';
+        window.location.href = '/pages/create_P';
     }
   };
 

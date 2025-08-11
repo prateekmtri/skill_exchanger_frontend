@@ -51,11 +51,20 @@ export default function ContactPage() {
         });
     };
 
-    const creators = [
-        { name: 'Prateek', image: 'https://i.pravatar.cc/150?u=prateek', linkedin: '#', twitter: '#' },
-        { name: 'Kapil', image: 'https://i.pravatar.cc/150?u=kapil', linkedin: '#', twitter: '#' }
-    ];
-
+  const creators = [
+    { 
+        name: 'Prateek Mani Tripathi', 
+        image: '/prateek.jpeg', // FIX: Path theek kar diya gaya hai
+        linkedin: 'https://www.linkedin.com/in/prateek-mani-tripathi-51935a259/',
+        twitter: 'https://x.com/PrateekTri20851'
+    },
+    { 
+        name: 'Ekta Verma', 
+        image: '/ekta.jpeg', // FIX: Path theek kar diya gaya hai
+        linkedin: 'https://www.linkedin.com/in/ekta-verma-4b9436251/',
+        twitter: 'https://x.com/EktaV1278'
+    }
+];
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">

@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { io } from 'socket.io-client';
 import { jwtDecode } from 'jwt-decode';
-import { Send, ArrowLeft, Check, CheckCheck, Smile } from 'lucide-react';
+import { Send, ArrowLeft, Check, CheckCheck, Smile, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmojiPicker from 'emoji-picker-react';
-import { useSocket } from '@/context/SocketContext';
+// REMOVED: Ab hum global context ka use nahi karenge
+// import { useSocket } from '@/context/SocketContext';
 
-// --- Message Tick Component (No Change) ---
 const MessageTick = ({ status }) => {
     if (status === 'seen') return <CheckCheck size={16} className="text-blue-400" />;
     if (status === 'delivered') return <CheckCheck size={16} className="text-gray-400" />;
@@ -22,8 +23,12 @@ const ChatPage = () => {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [isPartnerOnline, setIsPartnerOnline] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { socket, clearUnreadFrom } = useSocket();
+  // NAYA: Ab socket aur isConnected state local honge
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+
   const router = useRouter();
   const params = useParams();
   const receiverId = params.userId;
@@ -34,77 +39,88 @@ const ChatPage = () => {
   };
   useEffect(scrollToBottom, [messages]);
 
-  // Data fetching aur user authentication
+  // --- YEH useEffect AB CHAT PAGE KI POORI LIFECYCLE HANDLE KAREGA ---
   useEffect(() => {
-    const token = localStorage.getItem('skill-token');
-    if (!token) {
-      router.push('/pages/log_in');
-      return;
-    }
-    try {
-      const decoded = jwtDecode(token);
-      setLoggedInUser(decoded);
+    let newSocket; // Socket ko scope mein rakhein taaki cleanup ho sake
 
-      const fetchChatData = async () => {
+    const initializeChat = async () => {
+        const token = localStorage.getItem('skill-token');
+        if (!token) {
+            router.push('/pages/log_in');
+            return;
+        }
+
         try {
-          const userRes = await fetch(`https://skill-exchanger-backend-3.onrender.com/api/users/${receiverId}`);
-          const userData = await userRes.json();
-          if (userData.status === 'success') setChatPartner(userData.data.user);
+            const decoded = jwtDecode(token);
+            setLoggedInUser(decoded);
 
-          const msgRes = await fetch(`https://skill-exchanger-backend-3.onrender.com/api/chat/${receiverId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const msgData = await msgRes.json();
-          if (msgData.status === 'success') setMessages(msgData.data.messages);
+            // 1. Data Fetching
+            const [userRes, msgRes] = await Promise.all([
+                fetch(`https://skill-exchanger-backend-3.onrender.com/api/users/${receiverId}`),
+                fetch(`https://skill-exchanger-backend-3.onrender.com/api/chat/${receiverId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+            if (!userRes.ok || !msgRes.ok) throw new Error("Failed to fetch initial chat data.");
+            
+            const userData = await userRes.json();
+            const msgData = await msgRes.json();
+
+            if (userData.status === 'success') setChatPartner(userData.data.user);
+            if (msgData.status === 'success') setMessages(msgData.data.messages);
+            
+            setIsLoading(false); // Data fetch hone ke baad loading band karein
+
+            // 2. Socket Connection
+            newSocket = io('https://skill-exchanger-backend-3.onrender.com');
+            setSocket(newSocket);
+
+            newSocket.on('connect', () => {
+                setIsConnected(true);
+                newSocket.emit('addUser', decoded.id);
+                newSocket.emit('mark_messages_as_seen', { senderId: decoded.id, receiverId });
+            });
+            newSocket.on('disconnect', () => setIsConnected(false));
+
+            // 3. Listeners Setup
+            newSocket.on('new_message', (message) => {
+                if (message.senderId === receiverId || message.senderId === decoded.id) {
+                    setMessages((prev) => [...prev, message]);
+                    if (message.senderId === receiverId) {
+                        newSocket.emit('mark_messages_as_seen', { senderId: decoded.id, receiverId });
+                    }
+                }
+            });
+
+            newSocket.on('get_online_users', (onlineUsers) => {
+                setIsPartnerOnline(onlineUsers.includes(receiverId));
+            });
+
+            newSocket.on('messages_seen', ({ conversationPartner }) => {
+                if (conversationPartner === receiverId) {
+                    setMessages(prev => prev.map(msg => ({ ...msg, status: 'seen' })));
+                }
+            });
+
         } catch (error) {
-          console.error("Data fetch error:", error);
+            console.error("Initialization Error:", error);
+            setIsLoading(false);
         }
-      };
-      fetchChatData();
-    } catch (error) {
-      console.error("Token Error:", error);
-      router.push('/pages/log_in');
-    }
-  }, [receiverId, router]);
-
-  // Socket events ke liye
-  useEffect(() => {
-    if (!socket || !loggedInUser) return;
-
-    clearUnreadFrom(receiverId);
-    socket.emit('mark_messages_as_seen', { senderId: loggedInUser.id, receiverId });
-
-    const handleNewMessage = (message) => {
-      if (message.senderId === receiverId || message.senderId === loggedInUser.id) {
-        setMessages((prev) => [...prev, message]);
-        if (message.senderId === receiverId) {
-          socket.emit('mark_messages_as_seen', { senderId: loggedInUser.id, receiverId });
-        }
-      }
-    };
-    const handleOnlineUsers = (onlineUsers) => {
-      setIsPartnerOnline(onlineUsers.includes(receiverId));
-    };
-    const handleMessagesSeen = ({ conversationPartner }) => {
-      if (conversationPartner === receiverId) {
-        setMessages(prev => prev.map(msg => ({ ...msg, status: 'seen' })));
-      }
     };
 
-    socket.on('new_message', handleNewMessage);
-    socket.on('get_online_users', handleOnlineUsers);
-    socket.on('messages_seen', handleMessagesSeen);
+    initializeChat();
 
+    // Cleanup function: Jab component unmount ho
     return () => {
-      socket.off('new_message', handleNewMessage);
-      socket.off('get_online_users', handleOnlineUsers);
-      socket.off('messages_seen', handleMessagesSeen);
+        if (newSocket) {
+            newSocket.disconnect();
+        }
     };
-  }, [socket, loggedInUser, receiverId, clearUnreadFrom]);
+  }, [receiverId, router]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !socket || !loggedInUser) return;
+    if (newMessage.trim() === '' || !socket || !loggedInUser || !isConnected) return;
     const messageData = { senderId: loggedInUser.id, receiverId, content: newMessage };
     socket.emit('private_message', messageData);
     setNewMessage('');
@@ -115,8 +131,12 @@ const ChatPage = () => {
     setNewMessage(prev => prev + emojiObject.emoji);
   };
 
-  if (!chatPartner || !loggedInUser) {
-    return <div className="flex justify-center items-center h-screen bg-gray-100 text-gray-500">Loading Chat...</div>;
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen bg-gray-100 text-gray-500"><Loader className="animate-spin mr-2" /> Initializing Chat...</div>;
+  }
+
+  if (!chatPartner) {
+    return <div className="flex justify-center items-center h-screen bg-gray-100 text-red-500">Could not load user details. Please go back.</div>;
   }
   
   return (
@@ -130,10 +150,7 @@ const ChatPage = () => {
         <motion.button onClick={() => router.back()} className="mr-3 p-2 rounded-full hover:bg-gray-100" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
           <ArrowLeft size={22} />
         </motion.button>
-        
-        {/* REMOVED: Avatar div yahan se hata diya gaya hai */}
-
-        <div className="ml-0"> {/* Margin adjusted */}
+        <div>
             <h1 className="text-lg font-bold text-gray-800">{chatPartner.fullName}</h1>
             <p className={`text-xs font-semibold ${isPartnerOnline ? 'text-green-600' : 'text-gray-500'}`}>
                 {isPartnerOnline ? 'Online' : 'Offline'}
@@ -169,13 +186,7 @@ const ChatPage = () => {
       <footer className="bg-white p-3 border-t">
         <AnimatePresence>
             {showEmojiPicker && (
-                <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: 350 }}
-                    exit={{ height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                >
+                <motion.div initial={{ height: 0 }} animate={{ height: 350 }} exit={{ height: 0 }} className="overflow-hidden">
                     <EmojiPicker onEmojiClick={onEmojiClick} height={350} width="100%" />
                 </motion.div>
             )}
@@ -184,8 +195,19 @@ const ChatPage = () => {
           <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full">
             <Smile size={22} />
           </button>
-          <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 w-full px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <motion.button type="submit" className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:bg-blue-300 transition-colors shadow-lg" disabled={!newMessage.trim()} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+          <input 
+            type="text" 
+            value={newMessage} 
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={isConnected ? "Type a message..." : "Connecting..."}
+            disabled={!isConnected}
+            className="flex-1 w-full px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed" 
+          />
+          <motion.button 
+            type="submit" 
+            disabled={!newMessage.trim() || !isConnected} 
+            className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:bg-gray-400 transition-colors shadow-lg"
+          >
             <Send size={20} />
           </motion.button>
         </form>

@@ -1,4 +1,4 @@
-// frontend/context/SocketContext.js (Final Version)
+// frontend/context/SocketContext.js (Final Corrected Code)
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
@@ -28,7 +28,6 @@ export const SocketProvider = ({ children }) => {
                     .then(data => {
                         if (data.status === 'success') {
                             setLoggedInUser(data.data.user);
-                            // Database se mile unread counts ko state mein set karein
                             setUnreadCounts(data.data.user.unreadMessages || {});
                         }
                     });
@@ -36,23 +35,68 @@ export const SocketProvider = ({ children }) => {
         }
     }, []);
 
+  
+
+ // Socket connection useEffect - IMPROVED
     useEffect(() => {
         if (loggedInUser) {
-            const newSocket = io('http://localhost:5000');
+            console.log('Connecting socket for user:', loggedInUser._id);
+            
+            const newSocket = io('https://skill-exchanger-backend-3.onrender.com', {
+                transports: ['websocket', 'polling'],
+                timeout: 20000,
+                forceNew: false,
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+            
             setSocket(newSocket);
-            newSocket.emit('addUser', loggedInUser._id);
+
+            newSocket.on('connect', () => {
+                console.log('Socket connected successfully with ID:', newSocket.id);
+                newSocket.emit('addUser', loggedInUser._id);
+            });
+
+            newSocket.on('disconnect', (reason) => {
+                console.log('Socket disconnected:', reason);
+            });
+
+            newSocket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+            });
 
             newSocket.on('new_message', (message) => {
-                const currentChatPartnerId = window.location.pathname.split('/chat/')[1];
-                if (message.senderId !== loggedInUser._id && message.senderId !== currentChatPartnerId) {
-                    toast.success(`New message received!`, { icon: '📬' });
-                    setUnreadCounts(prev => ({ ...prev, [message.senderId]: (prev[message.senderId] || 0) + 1 }));
+                console.log('New message received in context:', message);
+                
+                const currentPath = window.location.pathname;
+                const currentChatPartnerId = currentPath.includes('/chat/') ? 
+                    currentPath.split('/chat/')[1] : null;
+                
+                // Show toast only if not in current chat
+                if (message.senderId !== loggedInUser._id && 
+                    message.senderId !== currentChatPartnerId) {
+                    
+                    toast.success(`New message from ${message.senderName || 'Someone'}!`, { 
+                        icon: '📬',
+                        duration: 4000 
+                    });
+                    
+                    setUnreadCounts(prev => ({ 
+                        ...prev, 
+                        [message.senderId]: (prev[message.senderId] || 0) + 1 
+                    }));
                 }
             });
 
-            return () => newSocket.disconnect();
+            // Cleanup function
+            return () => {
+                console.log('Disconnecting socket');
+                newSocket.disconnect();
+            };
         }
     }, [loggedInUser]);
+
 
     const clearUnreadFrom = useCallback((senderId) => {
         setUnreadCounts(prev => {
@@ -64,8 +108,8 @@ export const SocketProvider = ({ children }) => {
     
     useEffect(() => {
         const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
-        if (totalUnread > 0) { document.title = `(${totalUnread}) Skill Exchanger`; } 
-        else { document.title = "Skill Exchanger"; }
+        if (totalUnread > 0) { document.title = `(${totalUnread}) Skill Exchange`; } 
+        else { document.title = "Skill Exchange"; }
     }, [unreadCounts]);
 
     const value = useMemo(() => ({
