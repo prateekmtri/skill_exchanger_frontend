@@ -1,9 +1,12 @@
-// app/pages/contact/page.js (Corrected Code with .env)
+// app/pages/contact/page.js
 'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, MessageSquare, Send, Linkedin, Twitter, User, Book } from 'lucide-react';
+// Link component ko import kiya gaya hai
+import Link from 'next/link'; 
+// ArrowLeft icon ko import kiya gaya hai
+import { Mail, MessageSquare, Send, Linkedin, Twitter, User, Book, ArrowLeft } from 'lucide-react'; 
 import emailjs from '@emailjs/browser';
 import toast from 'react-hot-toast';
 
@@ -32,8 +35,6 @@ export default function ContactPage() {
             reply_to: formData.email,
         };
 
-        // --- YAHAN CHANGE KIYA GAYA HAI ---
-        // Ab keys ko .env.local file se padha jaa raha hai
         emailjs.send(
             process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
             process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
@@ -51,22 +52,29 @@ export default function ContactPage() {
         });
     };
 
-  const creators = [
-    { 
-        name: 'Prateek Mani Tripathi', 
-        image: '/prateek.jpeg', // FIX: Path theek kar diya gaya hai
-        linkedin: 'https://www.linkedin.com/in/prateek-mani-tripathi-51935a259/',
-        twitter: 'https://x.com/PrateekTri20851'
-    },
-    { 
-        name: 'Ekta Verma', 
-        image: '/ekta.jpeg', // FIX: Path theek kar diya gaya hai
-        linkedin: 'https://www.linkedin.com/in/ekta-verma-4b9436251/',
-        twitter: 'https://x.com/EktaV1278'
-    }
-];
+    const creators = [
+        { 
+            name: 'Prateek Mani Tripathi', 
+            image: '/prateek.jpeg',
+            linkedin: 'https://www.linkedin.com/in/prateek-mani-tripathi-51935a259/',
+            twitter: 'https://x.com/PrateekTri20851'
+        },
+        { 
+            name: 'Ekta Verma', 
+            image: '/ekta.jpeg',
+            linkedin: 'https://www.linkedin.com/in/ekta-verma-4b9436251/',
+            twitter: 'https://x.com/EktaV1278'
+        }
+    ];
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8 relative">
+            {/* --- YAHAN BACK BUTTON ADD KIYA GAYA HAI --- */}
+            <Link href="/" passHref>
+                <div className="absolute top-6 left-6 z-20 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all cursor-pointer" title="Back to Home">
+                    <ArrowLeft className="w-6 h-6 text-gray-800" />
+                </div>
+            </Link>
+
             <div className="max-w-5xl mx-auto">
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <h1 className="text-4xl sm:text-5xl font-bold text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
@@ -94,7 +102,7 @@ export default function ContactPage() {
                                     <input type="email" name="email" id="email" value={formData.email} onChange={handleInputChange} required className="block w-full rounded-md border-gray-300 pl-10 py-3 focus:border-indigo-500 focus:ring-indigo-500" placeholder="you@example.com" />
                                 </div>
                             </div>
-                             <div>
+                            <div>
                                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Subject</label>
                                 <div className="mt-1 relative rounded-md shadow-sm">
                                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><Book className="h-5 w-5 text-gray-400" /></div>

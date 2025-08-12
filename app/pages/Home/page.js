@@ -1,21 +1,26 @@
 "use client";
 
+// STEP 1: Zaroori cheezein import ki gayi hain.
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { Bot } from 'lucide-react'; // Chatbot ka icon
 
-// Navbar ko yahan import kiya gaya hai
+// Navbar aur ChatModal components ko import kiya gaya hai.
 import Navbar from '@/components/Navbar';
+import ChatModal from '../../components/ChatInterface'; // STEP 2: ChatModal component import hua.
 
 export default function Home() {
+  // STEP 3: Chat modal ko control karne ke liye state.
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Homepage ke baaki saare states (inme koi badlav nahi hai)
   const [currentStory, setCurrentStory] = useState('');
   const [typewriterText, setTypewriterText] = useState('');
   const [showStory, setShowStory] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const videoRefs = useRef([]);
-
-  // Puraana header aur auth se juda saara logic yahan se hata diya gaya hai
 
   const stories = [
     "Sarah was hesitant to learn coding at 35. Today, she mentors others and runs a successful web design studio. It's never too late to begin.",
@@ -33,9 +38,9 @@ export default function Home() {
     { src: "https://videos.pexels.com/video-files/3772427/3772427-hd_1920_1080_25fps.mp4", alt: "Capturing stunning photos", title: "Photography", icon: ( <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg> ) }
   ];
 
-  const typewriterMessage = "   What will you learn today?";
+  const typewriterMessage = "     What   will you learn today? ";
 
-  // Effects
+  // Effects (inme koi badlav nahi hai)
   useEffect(() => {
     const typewriterTimer = setTimeout(() => {
       let i = 0;
@@ -55,9 +60,8 @@ export default function Home() {
     setCurrentStory(randomStory);
 
     return () => clearTimeout(typewriterTimer);
-  }, []); // Empty dependency array to run only on mount
+  }, []);
 
-  // CORRECTED: Is useEffect se scroll-related logic hata diya gaya hai
   useEffect(() => {
     const videoInterval = setInterval(() => {
       if (!isHovered) {
@@ -142,9 +146,9 @@ export default function Home() {
                           </div>
                           <p className="text-lg text-gray-700 leading-relaxed">"{currentStory}"</p>
                           <Link href="/pages/create_P">
-                             <motion.button whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(99, 102, 241, 0.4)" }} whileTap={{ scale: 0.98 }} className="mt-6 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-medium transition-all duration-300 shadow-md">
-                               Start Your Journey
-                             </motion.button>
+                              <motion.button whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(99, 102, 241, 0.4)" }} whileTap={{ scale: 0.98 }} className="mt-6 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-medium transition-all duration-300 shadow-md">
+                                Start Your Journey
+                              </motion.button>
                           </Link>
                         </div>
                       </motion.div>
@@ -197,6 +201,24 @@ export default function Home() {
           </footer>
         </div>
       </main>
+
+      {/* ==================================================================== */}
+      {/* ===== CHATBOT INTEGRATION CODE ===== */}
+      {/* ==================================================================== */}
+
+      {/* STEP 4: Yeh floating button hai jo hamesha screen par dikhega. */}
+      <button 
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-8 right-8 bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 rounded-full shadow-lg hover:scale-110 transition-transform duration-300 z-50"
+        aria-label="Open Prateek's Assistant"
+      >
+        <Bot className="w-8 h-8" />
+      </button>
+
+      {/* STEP 5: Agar `isChatOpen` true hai, to hi ChatModal component screen par dikhega. */}
+      <AnimatePresence>
+        {isChatOpen && <ChatModal onClose={() => setIsChatOpen(false)} />}
+      </AnimatePresence>
     </>
   );
 }
